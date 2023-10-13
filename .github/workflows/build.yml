@@ -1,0 +1,42 @@
+name: Build SU
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - '.github/workflows/build-su.yml'
+      - 'bin/**'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'bin/**'
+jobs:
+  build-su:
+    name: Build userspace resetprop
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Setup need_upload
+      id: need_upload
+      run: |
+        if [ ! -z "${{ secrets.BOT_TOKEN }}" ]; then
+          echo "UPLOAD=true" >> $GITHUB_OUTPUT
+        else
+          echo "UPLOAD=false" >> $GITHUB_OUTPUT
+        fi
+    - uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r25b
+        local-cache: true
+    - name: Build resetprop
+      working-directory: ./bin
+      run: ndk-build
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: resetprop
+        path: ./bin/libs
+    - name: Setup mutex for uploading
+      uses: ben-z/gh-action-mutex@v1.0-alpha-7
+      if: github.event_name != 'pull_request' && steps.need_upload.outputs.UPLOAD == 'true'
